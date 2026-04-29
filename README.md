@@ -90,7 +90,7 @@ v0.1 is queue-only. v0.2 will add SMTP send for **approved** drafts (still requi
 ## Roadmap
 
 - [x] **v0.1** — Drafter (LLM + template fallback) · markdown HITL queue · CSV/YAML input · 14 tests
-- [ ] **v0.2** — SMTP sender for `queue/approved/` · reply tracking via IMAP
+- [x] **v0.2** — SMTP sender for `queue/approved/` (Gmail/Postmark/Resend/Sendgrid) · dry-run mode · 25 tests
 - [ ] **v0.3** — Investor enrichment (Twitter / LinkedIn pull) — auto-build thesis_hint
 - [ ] **v0.4** — Multi-touch follow-ups (T+5d, T+12d) with declining conviction
 - [ ] **v0.5** — Pipeline analytics: open rate / reply rate / meeting rate by thesis_hint pattern

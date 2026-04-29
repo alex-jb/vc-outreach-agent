@@ -18,6 +18,7 @@ from pathlib import Path
 from .drafter import draft_email
 from .models import Investor, Project
 from .queue import queue_draft, list_queue
+from .sender import send_approved_queue
 
 
 def _load_project(path: str) -> Project:
@@ -111,6 +112,17 @@ def cmd_queue(args) -> int:
     return 0
 
 
+def cmd_send(args) -> int:
+    summary = send_approved_queue(dry_run=args.dry_run)
+    print(f"\n  sent:    {len(summary['sent'])}", file=sys.stderr)
+    print(f"  failed:  {len(summary['failed'])}", file=sys.stderr)
+    if summary["failed"]:
+        for path, reason in summary["failed"]:
+            print(f"    ✗ {path}: {reason}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     if os.getenv("VC_OUTREACH_SKIP") == "1":
         return 0
@@ -131,12 +143,18 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--status", default="pending",
                    choices=["pending", "approved", "rejected", "sent"])
 
+    s = sub.add_parser("send", help="Send all queue/approved/ drafts via SMTP")
+    s.add_argument("--dry-run", action="store_true",
+                   help="Don't actually send; print what would happen")
+
     args = p.parse_args(argv)
 
     if args.cmd == "draft":
         return cmd_draft(args)
     if args.cmd == "queue":
         return cmd_queue(args)
+    if args.cmd == "send":
+        return cmd_send(args)
     return 1
 
 

@@ -84,7 +84,7 @@ v0.1 只入队。v0.2 加 SMTP 发送(仍然要你手动移文件)。v0.5 可能
 ## Roadmap
 
 - [x] **v0.1** —— Drafter(LLM + template fallback) · markdown HITL 队列 · CSV/YAML 输入 · 14 tests
-- [ ] **v0.2** —— SMTP 发送(给 `queue/approved/`)· IMAP 回复跟踪
+- [x] **v0.2** —— SMTP 发送(给 `queue/approved/`)· 支持 Gmail/Postmark/Resend/Sendgrid · 干跑模式 · 25 tests
 - [ ] **v0.3** —— 投资人 enrichment(Twitter / LinkedIn 抓)· 自动 build thesis_hint
 - [ ] **v0.4** —— 多触点 follow-up(T+5 天、T+12 天)逐步降低 conviction
 - [ ] **v0.5** —— Pipeline 分析:打开率 / 回复率 / 见面率,按 thesis_hint pattern 切
