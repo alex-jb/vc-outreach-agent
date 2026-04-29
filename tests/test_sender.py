@@ -197,3 +197,89 @@ def test_send_approved_queue_failure_kept_in_approved(tmp_path, monkeypatch):
     summary = send_approved_queue()
     assert len(summary["failed"]) == 1
     assert path.exists()  # still in approved/
+
+
+# ─── Rate limiting (v0.2) ────────────────────────────────────
+
+
+def test_rate_limit_sleeps_between_successful_sends(tmp_path, monkeypatch):
+    """With rate_limit_per_min=6 (one every 10s), 3 successful sends = 2 sleeps."""
+    monkeypatch.setenv("SMTP_HOST", "x")
+    monkeypatch.setenv("SMTP_USER", "x")
+    monkeypatch.setenv("SMTP_PASSWORD", "x")
+    monkeypatch.setenv("SMTP_FROM", "x")
+    # 3 approved drafts
+    for i in range(3):
+        d = _approved_draft(tmp_path)
+        d.rename(d.parent / f"{i}-{d.name}")
+
+    sleep_calls = []
+    def fake_sleep(s):
+        sleep_calls.append(s)
+
+    summary = send_approved_queue(dry_run=True, rate_limit_per_min=6,
+                                  sleep_fn=fake_sleep)
+    # dry_run → no sleeps
+    assert sleep_calls == []
+    assert len(summary["sent"]) == 3
+
+
+def test_rate_limit_real_send_calls_sleep(tmp_path, monkeypatch):
+    """Non-dry-run path: rate limit applies."""
+    monkeypatch.setenv("SMTP_HOST", "x")
+    monkeypatch.setenv("SMTP_USER", "x")
+    monkeypatch.setenv("SMTP_PASSWORD", "x")
+    monkeypatch.setenv("SMTP_FROM", "x")
+    for i in range(3):
+        d = _approved_draft(tmp_path)
+        d.rename(d.parent / f"{i}-{d.name}")
+
+    fake_smtp = MagicMock()
+    fake_smtp.__enter__ = MagicMock(return_value=fake_smtp)
+    fake_smtp.__exit__ = MagicMock(return_value=False)
+    sleep_calls = []
+    def fake_sleep(s):
+        sleep_calls.append(s)
+
+    with patch("smtplib.SMTP", return_value=fake_smtp):
+        summary = send_approved_queue(rate_limit_per_min=6,
+                                      sleep_fn=fake_sleep)
+    # 3 sends, sleep AFTER each except the last → 2 sleeps at 10s each
+    assert sleep_calls == [10.0, 10.0]
+    assert len(summary["sent"]) == 3
+
+
+def test_rate_limit_zero_disables_sleep(tmp_path, monkeypatch):
+    monkeypatch.setenv("SMTP_HOST", "x")
+    monkeypatch.setenv("SMTP_USER", "x")
+    monkeypatch.setenv("SMTP_PASSWORD", "x")
+    monkeypatch.setenv("SMTP_FROM", "x")
+    for i in range(3):
+        d = _approved_draft(tmp_path)
+        d.rename(d.parent / f"{i}-{d.name}")
+    fake_smtp = MagicMock()
+    fake_smtp.__enter__ = MagicMock(return_value=fake_smtp)
+    fake_smtp.__exit__ = MagicMock(return_value=False)
+    sleep_calls = []
+    with patch("smtplib.SMTP", return_value=fake_smtp):
+        send_approved_queue(rate_limit_per_min=0,
+                             sleep_fn=lambda s: sleep_calls.append(s))
+    assert sleep_calls == []
+
+
+def test_rate_limit_default_from_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("SMTP_HOST", "x")
+    monkeypatch.setenv("SMTP_USER", "x")
+    monkeypatch.setenv("SMTP_PASSWORD", "x")
+    monkeypatch.setenv("SMTP_FROM", "x")
+    monkeypatch.setenv("SENDER_RATE_LIMIT_PER_MIN", "30")  # one every 2s
+    for i in range(2):
+        d = _approved_draft(tmp_path)
+        d.rename(d.parent / f"{i}-{d.name}")
+    fake_smtp = MagicMock()
+    fake_smtp.__enter__ = MagicMock(return_value=fake_smtp)
+    fake_smtp.__exit__ = MagicMock(return_value=False)
+    sleep_calls = []
+    with patch("smtplib.SMTP", return_value=fake_smtp):
+        send_approved_queue(sleep_fn=lambda s: sleep_calls.append(s))
+    assert sleep_calls == [2.0]

@@ -113,7 +113,10 @@ def cmd_queue(args) -> int:
 
 
 def cmd_send(args) -> int:
-    summary = send_approved_queue(dry_run=args.dry_run)
+    summary = send_approved_queue(
+        dry_run=args.dry_run,
+        rate_limit_per_min=args.rate_limit,
+    )
     print(f"\n  sent:    {len(summary['sent'])}", file=sys.stderr)
     print(f"  failed:  {len(summary['failed'])}", file=sys.stderr)
     if summary["failed"]:
@@ -146,6 +149,10 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("send", help="Send all queue/approved/ drafts via SMTP")
     s.add_argument("--dry-run", action="store_true",
                    help="Don't actually send; print what would happen")
+    s.add_argument("--rate-limit", type=int, default=None,
+                   help="Max sends per minute (default: SENDER_RATE_LIMIT_PER_MIN "
+                        "env, or 10 if unset). 0 = no rate limit. "
+                        "Gmail App Password caps at 100/day.")
 
     args = p.parse_args(argv)
 

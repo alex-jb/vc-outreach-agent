@@ -24,8 +24,15 @@ import re
 import smtplib
 import ssl
 import sys
+import time
 from datetime import datetime, timezone
 from email.mime.text import MIMEText
+
+
+# Default rate limit: 10 sends/min = one every 6s. Gmail App Password caps
+# at 100/day so even at this rate you can't blow the daily limit in 10 min.
+# Override via SENDER_RATE_LIMIT_PER_MIN env (or --rate-limit CLI flag).
+DEFAULT_RATE_LIMIT_PER_MIN = 10
 
 
 # Re-exported for tests; the real path is read at call time so tests can
@@ -113,8 +120,18 @@ def send_one(path: pathlib.Path, *, dry_run: bool = False) -> tuple[bool, str]:
     return True, "sent"
 
 
-def send_approved_queue(*, dry_run: bool = False) -> dict[str, list[str]]:
+def send_approved_queue(*, dry_run: bool = False,
+                        rate_limit_per_min: int | None = None,
+                        sleep_fn=time.sleep) -> dict[str, list[str]]:
     """Iterate queue/approved/, send each, move successes to queue/sent/.
+
+    Rate-limiting: defaults to DEFAULT_RATE_LIMIT_PER_MIN = 10/min between
+    successful sends (Gmail App Password caps at 100/day; 10/min × 10 min
+    is the worst burst that's still safe). Override via the CLI flag,
+    SENDER_RATE_LIMIT_PER_MIN env, or rate_limit_per_min=0 to disable.
+
+    `sleep_fn` is injectable for tests.
+
     Returns {"sent": [paths], "failed": [(path, reason)], "skipped": []}.
     Never raises.
     """
@@ -123,11 +140,17 @@ def send_approved_queue(*, dry_run: bool = False) -> dict[str, list[str]]:
     sent_dir = root / "sent"
     sent_dir.mkdir(parents=True, exist_ok=True)
 
+    if rate_limit_per_min is None:
+        rate_limit_per_min = int(os.getenv(
+            "SENDER_RATE_LIMIT_PER_MIN", str(DEFAULT_RATE_LIMIT_PER_MIN)))
+    sleep_seconds = (60.0 / rate_limit_per_min) if rate_limit_per_min > 0 else 0.0
+
     summary: dict[str, list] = {"sent": [], "failed": [], "skipped": []}
     if not approved_dir.exists():
         return summary
 
-    for path in sorted(approved_dir.glob("*.md")):
+    paths = sorted(approved_dir.glob("*.md"))
+    for i, path in enumerate(paths):
         ok, reason = send_one(path, dry_run=dry_run)
         if ok:
             ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
@@ -143,6 +166,11 @@ def send_approved_queue(*, dry_run: bool = False) -> dict[str, list[str]]:
                 continue
             summary["sent"].append(str(new_path))
             print(f"✓ sent {path.name} → {new_path.name}", file=sys.stderr)
+            # Respect rate limit between successful sends only (not after
+            # failures — those are usually fast and shouldn't count against
+            # provider rate; let the caller retry).
+            if sleep_seconds > 0 and i < len(paths) - 1 and not dry_run:
+                sleep_fn(sleep_seconds)
         else:
             summary["failed"].append((str(path), reason))
             print(f"✗ {path.name}: {reason}", file=sys.stderr)
