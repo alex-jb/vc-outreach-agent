@@ -12,16 +12,28 @@ Prompt design philosophy:
 Graceful degradation: if no ANTHROPIC_API_KEY, returns a template-mode
 draft (still personalized via thesis_hint substitution) so the agent stays
 useful without a key. Both paths return the same `Draft` shape.
+
+v0.3: LLM call goes through solo_founder_os.AnthropicClient. Token usage
+is auto-logged to ~/.vc-outreach-agent/usage.jsonl, where cost-audit-agent
+picks it up for monthly spend reports.
 """
 from __future__ import annotations
 import os
+import pathlib
 from datetime import datetime, timezone
 from typing import Optional
+
+from solo_founder_os.anthropic_client import (
+    AnthropicClient,
+    DEFAULT_SONNET_MODEL,
+)
 
 from .models import Draft, Investor, Project
 
 
-DEFAULT_MODEL = os.getenv("VC_OUTREACH_MODEL", "claude-sonnet-4-6")
+DEFAULT_MODEL = os.getenv("VC_OUTREACH_MODEL", DEFAULT_SONNET_MODEL)
+USAGE_LOG_PATH = (pathlib.Path.home()
+                  / ".vc-outreach-agent" / "usage.jsonl")
 
 
 SYSTEM_PROMPT = """You are an indie founder writing one cold email to one investor.
@@ -106,30 +118,34 @@ def _template_fallback(inv: Investor, proj: Project) -> Draft:
 
 
 def draft_email(inv: Investor, proj: Project,
-                *, model: str = DEFAULT_MODEL) -> Draft:
+                *, model: str = DEFAULT_MODEL,
+                client: AnthropicClient | None = None) -> Draft:
     """Draft one email for (investor, project). Always returns a Draft;
     falls back to template mode if Claude is unavailable.
+
+    `client` is injectable for tests. In production, leave it None and
+    the function constructs an AnthropicClient pointed at the
+    vc-outreach usage log.
     """
-    if not os.getenv("ANTHROPIC_API_KEY"):
+    if client is None:
+        client = AnthropicClient(usage_log_path=USAGE_LOG_PATH)
+
+    if not client.configured:
         return _template_fallback(inv, proj)
 
     user_prompt = _build_user_prompt(inv, proj)
-
-    try:
-        from anthropic import Anthropic
-        client = Anthropic()
-        resp = client.messages.create(
-            model=model,
-            max_tokens=600,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-        text = "".join(b.text for b in resp.content if b.type == "text").strip()
-    except Exception as e:
-        # Network / auth / rate-limit: fall back to template + note the error
+    resp, err = client.messages_create(
+        model=model,
+        max_tokens=600,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+    if err is not None:
         d = _template_fallback(inv, proj)
-        d.raw_response = f"(LLM error, fell back to template: {e})"
+        d.raw_response = f"(LLM error, fell back to template: {err})"
         return d
+
+    text = AnthropicClient.extract_text(resp)
 
     # Parse JSON
     import json
