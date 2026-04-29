@@ -1,0 +1,12 @@
+name: Orallexa
+one_liner: AI-powered quant trading agent
+stage: pre-seed
+raise_amount: $500k
+deck_url: https://orallexa.com/deck.pdf
+founder_name: Alex Ji
+founder_email: alex@orallexa.com
+why_now: LLMs commoditize signal — execution is the moat now.
+traction:
+  - Sharpe 1.41 over 698 backtests
+  - DSPy-based reasoning pipeline shipped 2026-04
+  - 5 paying users on private alpha
