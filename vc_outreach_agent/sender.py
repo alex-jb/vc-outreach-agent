@@ -16,6 +16,10 @@ burning sends.
 
 Designed defensively: if SMTP fails for one draft, log + skip; continue
 with the rest. Never raises out of `send_approved_queue()`.
+
+v0.4: HITL queue logic lifted to solo_founder_os.HitlQueue. This module
+now only handles SMTP transport + the markdown-body parser specific to
+the vc-outreach draft format.
 """
 from __future__ import annotations
 import os
@@ -25,8 +29,11 @@ import smtplib
 import ssl
 import sys
 import time
-from datetime import datetime, timezone
 from email.mime.text import MIMEText
+
+from solo_founder_os.hitl_queue import parse_frontmatter
+
+from .queue import _queue
 
 
 # Default rate limit: 10 sends/min = one every 6s. Gmail App Password caps
@@ -35,31 +42,14 @@ from email.mime.text import MIMEText
 DEFAULT_RATE_LIMIT_PER_MIN = 10
 
 
-# Re-exported for tests; the real path is read at call time so tests can
-# override via VC_OUTREACH_QUEUE.
+# Re-exported for backward compatibility with v0.3 tests
+_parse_frontmatter = parse_frontmatter
+
+
 def _queue_root() -> pathlib.Path:
-    return pathlib.Path(os.getenv(
-        "VC_OUTREACH_QUEUE",
-        str(pathlib.Path.home() / ".vc-outreach-agent" / "queue"),
-    ))
-
-
-# YAML frontmatter parser — same minimalist format we use in queue.py
-_FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
-
-
-def _parse_frontmatter(md_text: str) -> dict:
-    """Return the YAML frontmatter as a dict. Returns {} if missing."""
-    m = _FM_RE.match(md_text)
-    if not m:
-        return {}
-    out: dict = {}
-    for line in m.group(1).splitlines():
-        if ":" not in line:
-            continue
-        k, _, v = line.partition(":")
-        out[k.strip()] = v.strip()
-    return out
+    """Legacy accessor — returns the resolved queue root for tests that
+    import this directly. New code should use _queue().root."""
+    return _queue().root
 
 
 def _extract_section(md_text: str, header: str) -> str:
@@ -74,7 +64,7 @@ def send_one(path: pathlib.Path, *, dry_run: bool = False) -> tuple[bool, str]:
     """Send the email represented by `path`. Return (success, reason).
     Caller is responsible for moving the file on success."""
     md = path.read_text()
-    fm = _parse_frontmatter(md)
+    fm = parse_frontmatter(md)
     to_email = fm.get("investor_email", "").strip()
     if not to_email:
         return False, "missing investor_email in frontmatter"
@@ -135,10 +125,7 @@ def send_approved_queue(*, dry_run: bool = False,
     Returns {"sent": [paths], "failed": [(path, reason)], "skipped": []}.
     Never raises.
     """
-    root = _queue_root()
-    approved_dir = root / "approved"
-    sent_dir = root / "sent"
-    sent_dir.mkdir(parents=True, exist_ok=True)
+    q = _queue()
 
     if rate_limit_per_min is None:
         rate_limit_per_min = int(os.getenv(
@@ -146,20 +133,16 @@ def send_approved_queue(*, dry_run: bool = False,
     sleep_seconds = (60.0 / rate_limit_per_min) if rate_limit_per_min > 0 else 0.0
 
     summary: dict[str, list] = {"sent": [], "failed": [], "skipped": []}
-    if not approved_dir.exists():
+    paths = q.list(status=q.APPROVED)
+    if not paths:
         return summary
 
-    paths = sorted(approved_dir.glob("*.md"))
     for i, path in enumerate(paths):
         ok, reason = send_one(path, dry_run=dry_run)
         if ok:
-            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-            new_path = sent_dir / f"{ts}-{path.name}"
             try:
-                path.rename(new_path)
+                new_path = q.move(path, to=q.SENT)
             except Exception:
-                # Couldn't move file; the email may have been sent — log
-                # and don't retry.
                 summary["sent"].append(str(path))
                 print(f"⚠ sent but couldn't move {path.name}: {reason}",
                       file=sys.stderr)
