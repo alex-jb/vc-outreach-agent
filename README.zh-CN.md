@@ -5,6 +5,7 @@
 > Solo Founder OS 第 3 个 agent —— 找投资人,基于(投资人 × 项目)用 Claude 起草个性化冷启动邮件,通过 markdown HITL 队列管理回复。**永远不自动发送。** 永远是你审、你按发送。
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/vc-outreach-agent.svg)](https://pypi.org/project/vc-outreach-agent/)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](#)
 [![Model](https://img.shields.io/badge/Claude-Sonnet_4.6-D97706?logoColor=white)](https://anthropic.com)
 

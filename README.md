@@ -5,6 +5,7 @@
 > Solo Founder OS agent #3 — finds investors, drafts personalized cold emails per (investor, project) pair via Claude, manages replies via a markdown HITL queue. Never auto-sends. Always your edit, your hit-send.
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/vc-outreach-agent.svg)](https://pypi.org/project/vc-outreach-agent/)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](#)
 [![Model](https://img.shields.io/badge/Claude-Sonnet_4.6-D97706?logoColor=white)](https://anthropic.com)
 
