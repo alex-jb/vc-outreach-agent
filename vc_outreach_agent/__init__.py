@@ -11,4 +11,4 @@ NEVER auto-sends. v0.1 always queues for human approval. v0.5+ may add
 auto-send for low-stakes follow-ups, but cold first emails always go
 through HITL.
 """
-__version__ = "0.6.0"
+__version__ = "0.7.0"

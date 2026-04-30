@@ -96,6 +96,27 @@ v0.1 is queue-only. v0.2 will add SMTP send for **approved** drafts (still requi
 - [ ] **v0.4** — Multi-touch follow-ups (T+5d, T+12d) with declining conviction
 - [ ] **v0.5** — Pipeline analytics: open rate / reply rate / meeting rate by thesis_hint pattern
 
+## MCP server (Claude Desktop / Cursor / Zed)
+
+Draft an investor email inline from your AI assistant.
+
+```bash
+pip install 'vc-outreach-agent[mcp]'
+```
+
+```json
+{
+  "mcpServers": {
+    "vc-outreach": {
+      "command": "vc-outreach-mcp",
+      "env": { "ANTHROPIC_API_KEY": "..." }
+    }
+  }
+}
+```
+
+Tools: `draft_email(...)` · `list_pending()` · `list_approved()`
+
 ## License
 
 MIT.

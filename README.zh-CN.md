@@ -90,6 +90,27 @@ v0.1 只入队。v0.2 加 SMTP 发送(仍然要你手动移文件)。v0.5 可能
 - [ ] **v0.4** —— 多触点 follow-up(T+5 天、T+12 天)逐步降低 conviction
 - [ ] **v0.5** —— Pipeline 分析:打开率 / 回复率 / 见面率,按 thesis_hint pattern 切
 
+## MCP server(Claude Desktop / Cursor / Zed)
+
+让 AI 助手直接帮你 draft 投资人邮件。
+
+```bash
+pip install 'vc-outreach-agent[mcp]'
+```
+
+```json
+{
+  "mcpServers": {
+    "vc-outreach": {
+      "command": "vc-outreach-mcp",
+      "env": { "ANTHROPIC_API_KEY": "..." }
+    }
+  }
+}
+```
+
+工具:`draft_email(...)` · `list_pending()` · `list_approved()`
+
 ## 协议
 
 MIT。

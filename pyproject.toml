@@ -1,6 +1,6 @@
 [project]
 name = "vc-outreach-agent"
-version = "0.6.0"
+version = "0.7.0"
 description = "Solo Founder OS agent #3 — find investors, draft personalized cold emails, manage replies via a markdown HITL queue."
 authors = [{ name = "Alex Ji", email = "alex@vibexforge.com" }]
 license = { text = "MIT" }
@@ -26,10 +26,12 @@ classifiers = [
 keywords = ["fundraising", "cold-email", "smtp", "claude", "hitl", "indie"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+mcp = ["mcp>=1.0"]
+dev = ["pytest>=8.0", "mcp>=1.0"]
 
 [project.scripts]
 vc-outreach-agent = "vc_outreach_agent.__main__:main"
+vc-outreach-mcp = "vc_outreach_agent.mcp_server:main"
 
 [project.urls]
 Repository = "https://github.com/alex-jb/vc-outreach-agent"
