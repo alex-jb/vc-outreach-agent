@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 from .drafter import draft_email
+from .enricher import enrich_csv_file
 from .models import Investor, Project
 from .queue import queue_draft, list_queue
 from .sender import send_approved_queue
@@ -126,6 +127,23 @@ def cmd_send(args) -> int:
     return 0
 
 
+def cmd_enrich(args) -> int:
+    summary = enrich_csv_file(
+        csv_path=args.investors,
+        digest_path=args.digest,
+        out_path=args.out,
+        top_n_clusters=args.top_n,
+    )
+    print(f"enriched {summary['enriched']} of {summary['rows_total']} "
+          f"investor rows from {args.digest}",
+          file=sys.stderr)
+    if args.out:
+        print(f"  wrote to {args.out}", file=sys.stderr)
+    else:
+        print(f"  (overwrote {args.investors})", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     if os.getenv("VC_OUTREACH_SKIP") == "1":
         return 0
@@ -154,6 +172,17 @@ def main(argv: list[str] | None = None) -> int:
                         "env, or 10 if unset). 0 = no rate limit. "
                         "Gmail App Password caps at 100/day.")
 
+    e = sub.add_parser("enrich",
+        help="Fill investors CSV thesis_hint column from a CDA digest")
+    e.add_argument("--investors", required=True,
+                   help="Path to investors.csv (modified in-place if --out absent)")
+    e.add_argument("--digest", required=True,
+                   help="Path to customer-discovery-agent digest.md")
+    e.add_argument("--out", default=None,
+                   help="Optional output path (default: overwrite --investors)")
+    e.add_argument("--top-n", type=int, default=3,
+                   help="Use the top N clusters from the digest, rotated across rows (default 3)")
+
     args = p.parse_args(argv)
 
     if args.cmd == "draft":
@@ -162,6 +191,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_queue(args)
     if args.cmd == "send":
         return cmd_send(args)
+    if args.cmd == "enrich":
+        return cmd_enrich(args)
     return 1
 
 
