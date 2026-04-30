@@ -117,6 +117,19 @@ def _template_fallback(inv: Investor, proj: Project) -> Draft:
     )
 
 
+DRAFT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "subject": {"type": "string", "description":
+                    "Email subject. Under 8 words. Plain text, no emoji."},
+        "body": {"type": "string", "description":
+                 "Email body. Under 110 words. \\n for line breaks."},
+    },
+    "required": ["subject", "body"],
+    "additionalProperties": False,
+}
+
+
 def draft_email(inv: Investor, proj: Project,
                 *, model: str = DEFAULT_MODEL,
                 client: AnthropicClient | None = None) -> Draft:
@@ -126,6 +139,11 @@ def draft_email(inv: Investor, proj: Project,
     `client` is injectable for tests. In production, leave it None and
     the function constructs an AnthropicClient pointed at the
     vc-outreach usage log.
+
+    v0.6: uses solo_founder_os.messages_create_json — JSON output is
+    schema-guaranteed, eliminates the markdown-fence-stripping +
+    try/except parse path that v0.5 had. Template fallback still
+    triggers on missing key / network error / API beta hiccup.
     """
     if client is None:
         client = AnthropicClient(usage_log_path=USAGE_LOG_PATH)
@@ -134,7 +152,8 @@ def draft_email(inv: Investor, proj: Project,
         return _template_fallback(inv, proj)
 
     user_prompt = _build_user_prompt(inv, proj)
-    resp, err = client.messages_create(
+    obj, err = client.messages_create_json(
+        schema=DRAFT_SCHEMA,
         model=model,
         max_tokens=600,
         system=SYSTEM_PROMPT,
@@ -145,27 +164,11 @@ def draft_email(inv: Investor, proj: Project,
         d.raw_response = f"(LLM error, fell back to template: {err})"
         return d
 
-    text = AnthropicClient.extract_text(resp)
-
-    # Parse JSON
-    import json
-    subject = ""
-    body = ""
-    try:
-        # Trim ```json ... ``` if Claude added it despite the rule
-        cleaned = text.strip()
-        if cleaned.startswith("```"):
-            cleaned = cleaned.split("```", 2)[1]
-            if cleaned.startswith("json"):
-                cleaned = cleaned[4:]
-            cleaned = cleaned.rsplit("```", 1)[0].strip()
-        obj = json.loads(cleaned)
-        subject = obj.get("subject", "").strip()
-        body = obj.get("body", "").strip()
-    except Exception:
-        # Unparseable: fall back to template, keep raw for audit
+    subject = (obj.get("subject") or "").strip()
+    body = (obj.get("body") or "").strip()
+    if not subject or not body:
         d = _template_fallback(inv, proj)
-        d.raw_response = f"(unparseable LLM response, fell back: {text[:200]})"
+        d.raw_response = "(LLM returned empty subject/body, fell back)"
         return d
 
     return Draft(
@@ -176,5 +179,5 @@ def draft_email(inv: Investor, proj: Project,
         body=body,
         drafted_at=datetime.now(timezone.utc),
         raw_prompt=user_prompt,
-        raw_response=text,
+        raw_response=f"(structured-output JSON: {obj})",
     )

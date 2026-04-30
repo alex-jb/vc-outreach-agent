@@ -78,9 +78,11 @@ def test_template_falls_back_when_no_thesis_hint(monkeypatch):
     assert "your work at YC" in d.body
 
 
-# ─── LLM happy path ─────────────────────────────────────────────
+# ─── LLM happy path (v0.6 uses structured outputs — fake_anthropic
+# returns a string body that the API treats as the structured JSON
+# payload, so the existing fake_anthropic helper still works) ────────
 
-def test_llm_path_parses_json(monkeypatch):
+def test_llm_path_parses_structured_output(monkeypatch):
     fake = fake_anthropic(json.dumps({
         "subject": "Orallexa — Sharpe 1.41",
         "body": "Hi Garry,\\n\\nLooks like a fit.",
@@ -91,20 +93,24 @@ def test_llm_path_parses_json(monkeypatch):
     assert "Hi Garry" in d.body
 
 
-def test_llm_path_strips_markdown_fence(monkeypatch):
-    fake = fake_anthropic('```json\n{"subject":"X","body":"Y"}\n```')
-    client = _client_with_fake(monkeypatch, fake)
-    d = draft_email(_inv(), _proj(), client=client)
-    assert d.subject == "X"
-    assert d.body == "Y"
-
-
 def test_llm_unparseable_falls_back_to_template(monkeypatch):
+    """If structured outputs hiccup and return non-JSON, we fall back."""
     fake = fake_anthropic("hello not even json")
     client = _client_with_fake(monkeypatch, fake)
     d = draft_email(_inv(), _proj(), client=client)
     assert "Alex Ji" in d.body
-    assert "unparseable" in d.raw_response
+    assert "LLM error" in d.raw_response
+    assert "parse failed" in d.raw_response
+
+
+def test_llm_empty_subject_falls_back(monkeypatch):
+    """Schema permits empty strings; agent still falls back if subject
+    or body is blank — that's a quality bar, not just a parse bar."""
+    fake = fake_anthropic(json.dumps({"subject": "", "body": ""}))
+    client = _client_with_fake(monkeypatch, fake)
+    d = draft_email(_inv(), _proj(), client=client)
+    assert "Alex Ji" in d.body
+    assert "empty" in d.raw_response
 
 
 def test_llm_exception_falls_back_to_template(monkeypatch):
