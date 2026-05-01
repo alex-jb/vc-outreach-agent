@@ -8,13 +8,10 @@ exposes the same public functions the v0.2 callers expected.
 from __future__ import annotations
 import os
 import pathlib
-from datetime import datetime
-from typing import Optional
 
 from solo_founder_os.hitl_queue import (
     HitlQueue,
     make_basename,
-    sanitize_filename_part,
     PENDING,
 )
 

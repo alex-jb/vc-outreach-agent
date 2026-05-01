@@ -39,7 +39,7 @@ except ImportError as e:
 from solo_founder_os.hitl_queue import APPROVED, PENDING
 
 from .drafter import draft_email as _draft_email
-from .models import Draft, Investor, Project
+from .models import Investor, Project
 from .queue import list_queue, queue_draft
 
 

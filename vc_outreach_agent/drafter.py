@@ -21,7 +21,6 @@ from __future__ import annotations
 import os
 import pathlib
 from datetime import datetime, timezone
-from typing import Optional
 
 from solo_founder_os.anthropic_client import (
     AnthropicClient,

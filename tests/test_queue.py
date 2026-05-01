@@ -8,7 +8,6 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from vc_outreach_agent.queue import queue_draft, list_queue
 from vc_outreach_agent.models import Draft
 
 
