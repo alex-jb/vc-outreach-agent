@@ -193,6 +193,26 @@ def draft_email(inv: Investor, proj: Project,
         d.raw_response = "(LLM returned empty subject/body, fell back)"
         return d
 
+    # L3 skill library: record this as a successful example.
+    # Best-effort import — older solo-founder-os won't have skills module.
+    try:
+        from solo_founder_os import record_example
+        record_example(
+            "draft-vc-email",
+            inputs={
+                "investor_name": inv.name,
+                "firm": inv.firm,
+                "thesis_hint": inv.thesis_hint,
+                "project_name": proj.name,
+                "one_liner": proj.one_liner,
+                "why_now": proj.why_now,
+            },
+            output=f"Subject: {subject}\n\n{body}",
+            note="LLM-drafted, pre-HITL",
+        )
+    except Exception:
+        pass
+
     return Draft(
         investor_email=inv.email,
         investor_name=inv.name,
