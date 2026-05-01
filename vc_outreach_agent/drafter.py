@@ -35,6 +35,18 @@ USAGE_LOG_PATH = (pathlib.Path.home()
                   / ".vc-outreach-agent" / "usage.jsonl")
 
 
+def _reflect(reason: str, signal: str) -> None:
+    """Log a template-fallback event so future drafts learn from this miss.
+    Best-effort; never breaks the drafter's main loop."""
+    try:
+        from solo_founder_os import log_outcome
+        log_outcome(".vc-outreach-agent", task="draft_email",
+                    outcome="PARTIAL",
+                    signal=f"{reason}: {str(signal)[:200]}")
+    except Exception:
+        pass
+
+
 SYSTEM_PROMPT = """You are an indie founder writing one cold email to one investor.
 
 Rules — break any of these and the email will be rejected by HITL:
@@ -168,6 +180,7 @@ def draft_email(inv: Investor, proj: Project,
         messages=[{"role": "user", "content": user_prompt}],
     )
     if err is not None:
+        _reflect("LLM error", err)
         d = _template_fallback(inv, proj)
         d.raw_response = f"(LLM error, fell back to template: {err})"
         return d
@@ -175,6 +188,7 @@ def draft_email(inv: Investor, proj: Project,
     subject = (obj.get("subject") or "").strip()
     body = (obj.get("body") or "").strip()
     if not subject or not body:
+        _reflect("empty fields", "model returned empty subject or body")
         d = _template_fallback(inv, proj)
         d.raw_response = "(LLM returned empty subject/body, fell back)"
         return d
