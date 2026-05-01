@@ -131,7 +131,8 @@ DRAFT_SCHEMA = {
 
 def draft_email(inv: Investor, proj: Project,
                 *, model: str = DEFAULT_MODEL,
-                client: AnthropicClient | None = None) -> Draft:
+                client: AnthropicClient | None = None,
+                inject_traction: bool = True) -> Draft:
     """Draft one email for (investor, project). Always returns a Draft;
     falls back to template mode if Claude is unavailable.
 
@@ -146,6 +147,14 @@ def draft_email(inv: Investor, proj: Project,
     """
     if client is None:
         client = AnthropicClient(usage_log_path=USAGE_LOG_PATH)
+
+    # v0.7: inject live VibeX traction into proj.traction[] — any
+    # `{vibex_*}` placeholders get expanded with current Supabase numbers.
+    # Off-switch: pass inject_traction=False (e.g. when proj isn't VibeX,
+    # or when running tests).
+    if inject_traction:
+        from .vibex_traction import inject_vibex_traction
+        proj = inject_vibex_traction(proj)
 
     if not client.configured:
         return _template_fallback(inv, proj)

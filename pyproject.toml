@@ -1,6 +1,6 @@
 [project]
 name = "vc-outreach-agent"
-version = "0.7.0"
+version = "0.8.0"
 description = "Solo Founder OS agent #3 — find investors, draft personalized cold emails, manage replies via a markdown HITL queue."
 authors = [{ name = "Alex Ji", email = "alex@vibexforge.com" }]
 license = { text = "MIT" }
