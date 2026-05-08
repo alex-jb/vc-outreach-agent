@@ -15,9 +15,9 @@ import os
 import sys
 from pathlib import Path
 
-from .drafter import draft_email
+from .drafter import draft_email, draft_email_customer
 from .enricher import enrich_csv_file
-from .models import Investor, Project
+from .models import CustomerProject, Investor, Lead, Project
 from .queue import queue_draft, list_queue
 from .sender import send_approved_queue
 
@@ -127,6 +127,77 @@ def cmd_send(args) -> int:
     return 0
 
 
+def _load_customer_project(path: str) -> CustomerProject:
+    raw = Path(path).read_text()
+    if path.endswith(".json"):
+        data = json.loads(raw)
+    else:
+        data = {}
+        for line in raw.splitlines():
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            if ":" in line:
+                k, _, v = line.partition(":")
+                data[k.strip()] = v.strip()
+    return CustomerProject(
+        name=data.get("name", ""),
+        one_liner=data.get("one_liner", ""),
+        differentiator=data.get("differentiator", ""),
+        free_offer=data.get("free_offer", ""),
+        paid_tier=data.get("paid_tier", ""),
+        proof_url=data.get("proof_url", ""),
+        founder_name=data.get("founder_name", ""),
+        founder_email=data.get("founder_email", ""),
+    )
+
+
+def _load_leads(path: str) -> list[Lead]:
+    """Leads CSV columns: email,signal_source,signal_text,name,handle,notes."""
+    out: list[Lead] = []
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            if not row.get("email") or not row.get("signal_text", "").strip():
+                # Customer-mode hard gate: signal_text required
+                continue
+            out.append(Lead(
+                email=row["email"].strip(),
+                signal_source=row.get("signal_source", "").strip(),
+                signal_text=row["signal_text"].strip(),
+                name=row.get("name", "").strip(),
+                handle=row.get("handle", "").strip(),
+                notes=row.get("notes", "").strip(),
+            ))
+    return out
+
+
+def cmd_customer_draft(args) -> int:
+    proj = _load_customer_project(args.project)
+    leads = _load_leads(args.leads)
+    if not leads:
+        print(f"⚠ no leads loaded from {args.leads} (rows without "
+              f"signal_text are dropped — customer mode requires verbatim "
+              f"signals)", file=sys.stderr)
+        return 1
+
+    print(f"drafting {len(leads)} customer-mode email(s) for {proj.name} "
+          f"→ HITL queue", file=sys.stderr)
+    last_path = None
+    for i, lead in enumerate(leads, 1):
+        try:
+            d = draft_email_customer(lead, proj)
+        except ValueError as e:
+            print(f"  [{i}/{len(leads)}] {lead.email}: skipped — {e}",
+                  file=sys.stderr)
+            continue
+        last_path = queue_draft(d)
+        print(f"  [{i}/{len(leads)}] {lead.name or lead.email} → "
+              f"{last_path.name}", file=sys.stderr)
+    if last_path:
+        print("\n✓ done. review at:", file=sys.stderr)
+        print(f"  {last_path.parent}/", file=sys.stderr)
+    return 0
+
+
 def cmd_enrich(args) -> int:
     summary = enrich_csv_file(
         csv_path=args.investors,
@@ -183,6 +254,19 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--top-n", type=int, default=3,
                    help="Use the top N clusters from the digest, rotated across rows (default 3)")
 
+    cd = sub.add_parser(
+        "customer-draft",
+        help="(merged from customer-outreach-agent v0.2) Draft customer-mode "
+             "cold emails — Lead + CustomerProject. Each lead must have a "
+             "verbatim signal_text or it is skipped.",
+    )
+    cd.add_argument("--project", required=True,
+                    help="Path to customer-project file (.json or simple .yml)")
+    cd.add_argument("--leads", required=True,
+                    help="Path to leads CSV (columns: email,signal_source,"
+                         "signal_text,name,handle,notes). Rows without "
+                         "signal_text are dropped.")
+
     args = p.parse_args(argv)
 
     if args.cmd == "draft":
@@ -193,7 +277,28 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_send(args)
     if args.cmd == "enrich":
         return cmd_enrich(args)
+    if args.cmd == "customer-draft":
+        return cmd_customer_draft(args)
     return 1
+
+
+def main_customer(argv: list[str] | None = None) -> int:
+    """Entry point for the `customer-outreach-agent` console_script alias.
+
+    Maps the legacy `customer-outreach-agent draft ...` invocation onto the
+    merged `vc-outreach-agent customer-draft ...` flow. Existing shell history
+    + cron jobs that invoke `customer-outreach-agent draft --project p.json
+    --leads leads.csv` keep working unchanged.
+    """
+    if argv is None:
+        argv = sys.argv[1:]
+    # Translate `draft` subcommand to `customer-draft` for back-compat.
+    if argv and argv[0] == "draft":
+        argv = ["customer-draft", *argv[1:]]
+    elif argv and argv[0] == "queue":
+        # queue command is shared — same path on disk
+        pass
+    return main(argv)
 
 
 if __name__ == "__main__":

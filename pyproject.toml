@@ -1,14 +1,14 @@
 [project]
 name = "vc-outreach-agent"
-version = "0.8.0"
-description = "Solo Founder OS agent #3 — find investors, draft personalized cold emails, manage replies via a markdown HITL queue."
+version = "0.9.0"
+description = "Solo Founder OS agent #3 — draft personalized cold emails to investors (vc mode) or paying customers (customer mode), HITL queue + SMTP sender. Merged customer-outreach-agent in v0.9.0."
 authors = [{ name = "Alex Ji", email = "alex@vibexforge.com" }]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "anthropic>=0.40",
-    "solo-founder-os>=0.5.0",
+    "solo-founder-os>=0.10.0",
 ]
 
 classifiers = [
@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Office/Business",
 ]
-keywords = ["fundraising", "cold-email", "smtp", "claude", "hitl", "indie"]
+keywords = ["fundraising", "sales", "customer-outreach", "cold-email", "smtp", "claude", "hitl", "indie"]
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.0"]
@@ -32,6 +32,10 @@ dev = ["pytest>=8.0", "mcp>=1.0"]
 [project.scripts]
 vc-outreach-agent = "vc_outreach_agent.__main__:main"
 vc-outreach-mcp = "vc_outreach_agent.mcp_server:main"
+# v0.9.0: customer mode (merged from deprecated customer-outreach-agent repo).
+# Existing shell history / cron / aliases that called `customer-outreach-agent`
+# keep working — the binary now calls main() with mode=customer pre-set.
+customer-outreach-agent = "vc_outreach_agent.__main__:main_customer"
 
 [project.urls]
 Repository = "https://github.com/alex-jb/vc-outreach-agent"
