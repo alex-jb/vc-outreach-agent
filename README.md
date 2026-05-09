@@ -124,16 +124,20 @@ MIT.
 
 ## 🧩 Part of the [Solo Founder OS](https://github.com/alex-jb/solo-founder-os) stack
 
-A growing collection of MIT-licensed agents that share `solo-founder-os` as their base — Source/MetricSample contracts, HITL queue, AnthropicClient, notifiers, scheduler. Each agent is independently useful; together they cover the full solo-founder workflow.
+A growing collection of MIT-licensed agents that share `solo-founder-os` as their base — cron, eval, reflexion, AnthropicClient, HITL queue, notifiers. Each agent is independently useful; together they cover the full one-person company workflow.
+
+🌐 The whole stack is live in production at [vibexforge.com](https://vibexforge.com).
 
 | Agent | What it does |
 |---|---|
-| [solo-founder-os](https://github.com/alex-jb/solo-founder-os) | The shared base lib (Source/MetricSample, AnthropicClient, HITL queue, notifiers, sfos-doctor / sfos-evolver / sfos-eval / sfos-retro / sfos-bus / sfos-inbox) |
-| [build-quality-agent](https://github.com/alex-jb/build-quality-agent) | Pre-push diff reviewer + local build runner — catches CI-killing changes before they ship |
-| [customer-discovery-agent](https://github.com/alex-jb/customer-discovery-agent) | Reddit pain-point scraper + Claude clustering for product validation |
-| [funnel-analytics-agent](https://github.com/alex-jb/funnel-analytics-agent) | Daily brief + real-time alerts across 9 sources (Vercel, GitHub, Supabase, etc.) |
-| [cost-audit-agent](https://github.com/alex-jb/cost-audit-agent) | Monthly bill audit across 6 providers with dollar-tagged waste findings |
-| [bilingual-content-sync-agent](https://github.com/alex-jb/bilingual-content-sync-agent) | EN ⇄ ZH i18n diff + Claude translate + HITL apply |
-| [orallexa-marketing-agent](https://github.com/alex-jb/orallexa-marketing-agent) | AI marketing agent for OSS founders — auto-generate platform-specific marketing posts |
+| [solo-founder-os](https://github.com/alex-jb/solo-founder-os) | The shared base lib (cron · eval · reflexion · skill library · DGM-lite). Every other agent depends on it. |
+| [build-quality-agent](https://github.com/alex-jb/build-quality-agent) | Pre-push Claude diff reviewer + local build runner — catches CI-killing changes before they ship. |
+| [customer-discovery-agent](https://github.com/alex-jb/customer-discovery-agent) | Reddit pain-point scraper + Claude clustering for product validation. |
+| [funnel-analytics-agent](https://github.com/alex-jb/funnel-analytics-agent) | Daily founder brief + real-time PH-day alerts across 9 sources. |
+| [orallexa-marketing-agent](https://github.com/alex-jb/orallexa-marketing-agent) | AI marketing agent — submit project once, get platform-native posts for X / Reddit / HN / Dev.to / 小红书 + 7 more. Powers [vibexforge.com](https://vibexforge.com). |
+| [cost-audit-agent](https://github.com/alex-jb/cost-audit-agent) | Monthly bill audit across 6 providers (Vercel / Anthropic / OpenPanel / HyperDX / Supabase / GitHub Actions) with dollar-tagged waste findings. |
+| [bilingual-content-sync-agent](https://github.com/alex-jb/bilingual-content-sync-agent) | EN ⇄ 中文 i18n diff + Claude translate + HITL apply. Batch API path @ 50% off. |
+| [customer-support-agent](https://github.com/alex-jb/customer-support-agent) | Triage user messages → auto-draft replies → HITL queue. Closes the L5 customer-support layer. |
+| [payments-agent](https://github.com/alex-jb/payments-agent) | Overdue-invoice reminder drafter. Stripe-shaped types + MockProvider fallback + hard money-safety prompt rules. |
 
-*Each agent's own row is omitted from its README. Install whichever solve real problems for you.*
+*Each agent's own row is omitted from its README. Install whichever solve real problems for you — `pip install <agent-name>`.*
