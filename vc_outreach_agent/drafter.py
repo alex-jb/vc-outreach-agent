@@ -67,6 +67,10 @@ Rules — break any of these and the email will be rejected by HITL:
 
 2. Sentences 2-3: lead with TRACTION, never vision. Drop one number, one
    shipped artifact, one signal of demand. Vision is implied by the artifact.
+   2026-06-08: every traction number MUST cite source via [src:TAG] —
+   e.g. "$5K MRR [src:stripe]" / "1.2k GitHub stars [src:github]" /
+   "100k tokens served [src:openpanel]". Cohere Command A+ grounding pattern.
+   No source tag = HITL rejects.
 
 3. Sentence 4: the ask. ONE specific ask. "15-minute call this week" or
    "feedback on this brief deck" — never "any thoughts you have".
